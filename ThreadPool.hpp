@@ -13,8 +13,6 @@
 #include <list>
 #include <assert.h>
 
-using fThreadPoolProc = std::function<void(void*)>;
-
 class ThreadPool
 {
 public:
