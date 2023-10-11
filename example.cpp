@@ -35,7 +35,6 @@ int main()
     }
     tpool.Wait();
     std::cout << ">>> " << __func__ << ": End Of TestThreadPool part 1" << std::endl;
-    sleep(1);
 
     // Test thread pool using fptr2
     for(int i = 0; i < 20; i++)
