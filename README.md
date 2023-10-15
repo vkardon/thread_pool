@@ -2,7 +2,7 @@
 
 Simple and efficient c++ implementation of thread pool design pattern.
 Check example.cpp for detailed example.
-Basic example:
+Here is the basic example:
 
 1. Create Thread Pool anywhere in your program:
 
