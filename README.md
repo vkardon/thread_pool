@@ -2,7 +2,6 @@
 
 Simple and efficient c++ implementation of thread pool design pattern.
 Check example.cpp for detailed example.
-Here is the basic example:
 
 1. Create Thread Pool anywhere in your program:
 
@@ -26,3 +25,4 @@ for(int i=0; i<100; i++
 Wait();
 
 If something goes wrong during task execution, call Stop() method to cause Wait() to return immediately. 
+
