@@ -11,7 +11,7 @@ template<class DATA>
 class Pipe
 {
 public:
-    Pipe() = default;
+    Pipe(size_t capacity = 0) : mCapacity(capacity) {}
     ~Pipe() { Clear(); }
 
     // Push a new data object to the pipe.
@@ -29,9 +29,6 @@ public:
     // This will cause Pop() to return false once last data object is popped.
     void SetHasMore(bool hasMore);
 
-    // Set the pipe max capacity
-    void SetMaxPipeSize(size_t maxPipeSize) { mMaxPipeSize = maxPipeSize; }
-
     // Empty the pipe and reset it to initial state.
     void Clear();
 
@@ -40,7 +37,7 @@ private:
     Pipe& operator=(const Pipe&) = delete;
 
     std::list<DATA> mDataList;
-    size_t mMaxPipeSize = 0;
+    size_t mCapacity = 0;
     bool mHasMore = true;   // Initially, since we expect data to be pushed
     std::mutex mMtx;
     std::condition_variable mPopCv;
@@ -55,7 +52,7 @@ void Pipe<DATA>::Push(const DATA& data)
 {
     std::unique_lock<std::mutex> lock(mMtx);
 
-    while(mMaxPipeSize > 0 && mDataList.size() >= mMaxPipeSize)
+    while(mCapacity > 0 && mDataList.size() >= mCapacity)
         mPushCv.wait(lock);
 
     mDataList.emplace_back(data);
@@ -67,7 +64,7 @@ void Pipe<DATA>::Push(DATA&& data)
 {
     std::unique_lock<std::mutex> lock(mMtx);
 
-    while(mMaxPipeSize > 0 && mDataList.size() >= mMaxPipeSize)
+    while(mCapacity > 0 && mDataList.size() >= mCapacity)
         mPushCv.wait(lock);
 
     mDataList.emplace_back(std::move(data));
@@ -107,7 +104,7 @@ void Pipe<DATA>::SetHasMore(bool hasMore)
 {
     std::unique_lock<std::mutex> lock(mMtx);
     mHasMore = hasMore;
-    mPopCv.notify_one();    // In case we are waiting in Pop()
+    mPopCv.notify_all();    // In case we are waiting in Pop()
 }
 
 template<class DATA>
@@ -115,9 +112,9 @@ void Pipe<DATA>::Clear()
 {
     std::unique_lock<std::mutex> lock(mMtx);
     mDataList.clear();
-    mMaxPipeSize = 0;
+    mCapacity = 0;          // Unlimited capacity (0)
     mHasMore = true;
-    mPopCv.notify_one();    // In case we are waiting in Pop
+    mPopCv.notify_all();    // In case we are waiting in Pop()
 }
 
 #endif // __PIPE_HPP__

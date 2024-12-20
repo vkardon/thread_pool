@@ -1,29 +1,36 @@
 //
 // example.cpp
 //
-#include <iostream>
+#include <iostream>     // std::cout
+#include <atomic>       // std::atomic
 #include "ThreadPool.hpp"
 #include "Pipe.hpp"
 
+// Helper macro to synchronize writing to std::cout
 static std::mutex sLogMutex;
+#define TRACE(msg) \
+{ \
+     std::unique_lock<std::mutex> lock(sLogMutex); \
+     std::cout << "[tid=" << ThreadPool::GetThreadId() << "] " << msg << std::endl; \
+}
 
+// Lambda to test thread pool with lambda expression
 auto func1 = [](int count)
 {
     // Do something here...
     usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
-    std::unique_lock<std::mutex> lock(sLogMutex);
-    std::cout << "[tid=" << ThreadPool::GetThreadId() << "] count=" << count << std::endl;
+    TRACE("count=" << count);
 };
 
+// Function to test thread pool with function pointer
 void func2(int count, const std::string& str)
 {
     // Do something here...
     usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
-    std::unique_lock<std::mutex> lock(sLogMutex);
-    std::cout << "[tid=" << ThreadPool::GetThreadId() << "] count=" << count
-            << ", str='" << str << "'"<< std::endl;
+    TRACE("count=" << count << ", str='" << str << "'");
 };
 
+// Class to test thread pool with pointer to member function
 class MyClass
 {
 public:
@@ -31,9 +38,7 @@ public:
     {
         // Do something here...
         usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
-        std::unique_lock<std::mutex> lock(sLogMutex);
-        std::cout << "[tid=" << ThreadPool::GetThreadId() << "] count=" << count
-                << ", name='" << name << "'"<< std::endl;
+        TRACE("count=" << count << ", name='" << name << "'");
     }
     std::string name{"MyClass"};
 };
@@ -43,7 +48,7 @@ void TestThreadPool()
     ThreadPool tpool;
     tpool.Create(4); // 4 threads
 
-    // Test thread pool with lambda exression (func1)
+    // Test thread pool with lambda expression (func1)
     std::cout << ">>> Begin Of ThreadPool 'lambda exression' test" << std::endl;
     for(int i = 0; i < 20; i++)
     {
@@ -76,36 +81,58 @@ void TestPipe()
 {
     std::cout << ">>> Begin Of Pipe test" << std::endl;
 
-    Pipe<int> pipe;
+    Pipe<int> pipe(15); // Small pipe capacity for test
 
-    // Create thread to write to the pipe
-    std::thread writer([&pipe]()
+    std::atomic<int> writeCount{0};
+    std::atomic<int> readCount{0};
+
+    // Create threads to write to the pipe
+    std::vector<std::thread> writer(5); // 5 threads
+    for(auto& thread : writer)
     {
-        for(int i = 0; i < 20; i++)
+        thread = std::thread([&]()
         {
-            pipe.Push(i);
-        }
+            for(int i = 0; i < 20; i++)
+            {
+                usleep((random() % 100) * 1000); // Add a random 0-100 ms delay
+                pipe.Push(++writeCount);
+            }
+        });
+    }
 
-        pipe.SetHasMore(false); // Writing to the pipe done
-    });
-
-    // Create thread to read from the pipe
-    std::thread reader([&pipe]()
+    // Create threads to read from the pipe
+    std::vector<std::thread> reader(10); // 10 threads
+//    std::vector<std::thread> reader(1);
+    for(auto& thread : reader)
     {
-        int number{0};
-        while(pipe.Pop(number))
+        thread = std::thread([&]()
         {
-            // Do something here...
-            //usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
-            usleep((random() % 200) * 1000); // Add a random 0-200 ms delay
-            std::unique_lock<std::mutex> lock(sLogMutex);
-            std::cout << "number=" << number << std::endl;
-        }
-    });
+            int data{0};
+            while(pipe.Pop(data))
+            {
+                // Do something here...
+                //usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
+                usleep((random() % 300) * 1000); // Add a random 0-300 ms delay
+                TRACE("data=" << data);
+                ++readCount;
+            }
+        });
+    }
 
-    // Wait for writer & reader threads to complete
-    writer.join();
-    reader.join();
+    // Wait for writer threads to complete
+    for(auto& thread : writer)
+        thread.join();
+
+    pipe.SetHasMore(false); // No more data to write
+    TRACE("Writer is done");
+
+    // Wait for reader threads to complete
+    for(auto& thread : reader)
+        thread.join();
+
+    TRACE("Reader is done");
+
+    TRACE("Total writeCount=" << writeCount << ", readCount=" << readCount);
 
     std::cout << ">>> End Of Pipe test" << std::endl;
 }
