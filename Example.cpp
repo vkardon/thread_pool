@@ -2,7 +2,8 @@
 // example.cpp
 //
 #include <iostream>
-#include "threadPool.hpp"
+#include "ThreadPool.hpp"
+#include "Pipe.hpp"
 
 static std::mutex sLogMutex;
 
@@ -37,7 +38,7 @@ public:
     std::string name{"MyClass"};
 };
 
-int main()
+void TestThreadPool()
 {
     ThreadPool tpool;
     tpool.Create(4); // 4 threads
@@ -69,8 +70,50 @@ int main()
     }
     tpool.Wait();
     std::cout << ">>> End Of ThreadPool 'pointer to member function' test" << std::endl;
+}
 
+void TestPipe()
+{
+    std::cout << ">>> Begin Of Pipe test" << std::endl;
 
+    Pipe<int> pipe;
+
+    // Create thread to write to the pipe
+    std::thread writer([&pipe]()
+    {
+        for(int i = 0; i < 20; i++)
+        {
+            pipe.Push(i);
+        }
+
+        pipe.SetHasMore(false); // Writing to the pipe done
+    });
+
+    // Create thread to read from the pipe
+    std::thread reader([&pipe]()
+    {
+        int number{0};
+        while(pipe.Pop(number))
+        {
+            // Do something here...
+            //usleep((random() % 5) * 1000); // Add a random 0-4 ms delay
+            usleep((random() % 200) * 1000); // Add a random 0-200 ms delay
+            std::unique_lock<std::mutex> lock(sLogMutex);
+            std::cout << "number=" << number << std::endl;
+        }
+    });
+
+    // Wait for writer & reader threads to complete
+    writer.join();
+    reader.join();
+
+    std::cout << ">>> End Of Pipe test" << std::endl;
+}
+
+int main()
+{
+    TestThreadPool();
+    TestPipe();
     return 0;
 }
 
