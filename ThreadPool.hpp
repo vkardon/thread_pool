@@ -4,15 +4,16 @@
 #ifndef __THREADPOOL_HPP__
 #define __THREADPOOL_HPP__
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
+#include <thread>               // std::thread
+#include <mutex>                // std::mutex
+#include <condition_variable>   // std::condition_variable
 #include <functional>           // std::function
-#include <sys/syscall.h>        // __NR_gettid
-#include <unistd.h>             // syscall()
-#include <list>
-#include <assert.h>
+#include <list>                 // std::list
+#include <assert.h>             // assert()
 
+//
+// Class ThreadPool to manager a pool of working threads
+//
 class ThreadPool
 {
 public:
@@ -39,13 +40,6 @@ public:
     // It can be called by any thread, including pool threads.
     void Stop();
 
-    // Helper method to get thread id...for debugging, logging, etc.
-    static pid_t GetThreadId()
-    {
-        static thread_local pid_t threadId = syscall(__NR_gettid);
-        return threadId;
-    }
-
 private:
     void JoinThreads();
 
@@ -62,7 +56,7 @@ private:
 };
 
 //
-// class ThreadPool implementation
+// Class ThreadPool implementation
 //
 inline void ThreadPool::Create(int threadCount)
 {
