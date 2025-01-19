@@ -53,7 +53,7 @@ public:
 void TestThreadPool()
 {
     ThreadPool tpool;
-    tpool.Create(4); // 4 threads
+    tpool.Start(4); // 4 threads
 
     // Test thread pool with lambda expression (func1)
     std::cout << ">>> Begin Of ThreadPool 'lambda exression' test" << std::endl;
@@ -84,9 +84,56 @@ void TestThreadPool()
     std::cout << ">>> End Of ThreadPool 'pointer to member function' test" << std::endl;
 }
 
+void TestThreadPoolEx()
+{
+    // Test thread pool with lambda expression (func1)
+    {
+        ThreadPoolEx tpool(func1);
+        tpool.Start(4); // 4 threads
+
+        std::cout << ">>> Begin Of ThreadPoolEx 'lambda exression' test" << std::endl;
+        for(int i = 0; i < 20; i++)
+        {
+            tpool.Post(i);
+        }
+        tpool.Wait();
+        std::cout << ">>> End Of ThreadPoolEx 'lambda exression' test" << std::endl;
+    }
+
+    // Test thread pool with function pointer (func2)
+    {
+        ThreadPoolEx tpool(func2);
+        tpool.Start(4); // 4 threads
+
+        std::cout << ">>> Begin Of ThreadPoolEx 'function pointer' test" << std::endl;
+        for(int i = 0; i < 20; i++)
+        {
+            tpool.Post(i, "hello" + std::to_string(i));
+        }
+        tpool.Wait();
+        std::cout << ">>> End Of ThreadPoolEx 'function pointer' test" << std::endl;
+    }
+
+    // Test thread pool with pointer to member function (MyClass::func3)
+    {
+        ThreadPoolEx tpool(&MyClass::func3);
+        tpool.Start(4); // 4 threads
+
+        std::cout << ">>> Begin Of ThreadPool 'pointer to member function' test" << std::endl;
+        MyClass obj;
+        for(int i = 0; i < 20; i++)
+        {
+            tpool.Post(&obj, i);
+        }
+        tpool.Wait();
+        std::cout << ">>> End Of ThreadPool 'pointer to member function' test" << std::endl;
+    }
+}
+
 int main()
 {
     TestThreadPool();
+    TestThreadPoolEx();
     return 0;
 }
 

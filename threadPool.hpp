@@ -12,7 +12,8 @@
 #include <assert.h>             // assert()
 
 //
-// Class ThreadPool to manager a pool of working threads
+// A class ThreadPool to manage a pool of threads where the task function
+// can be different as specified by each request.
 //
 class ThreadPool
 {
@@ -20,10 +21,10 @@ public:
     ThreadPool() = default;
     ~ThreadPool() { Destroy(); }
 
-    void Create(int threadCount);
+    void Start(int threadCount);
 
     // Post function to be executed by ThreadPool along with function args
-    template<class FUNC, class... ARGS>
+    template<typename FUNC, typename... ARGS>
     void Post(FUNC&& func, ARGS&&... args);
 
     // Wait() will wait of all pool threads either done processing or stopped.
@@ -56,9 +57,29 @@ private:
 };
 
 //
+// A class ThreadPoolEx to manage a pool of threads where all threads
+// execute the same task function
+//
+template<typename FUNC>
+class ThreadPoolEx : public ThreadPool
+{
+public:
+    ThreadPoolEx(FUNC func) : mFunc(func) {};
+    ~ThreadPoolEx() = default;
+
+    // Post arguments for a function to be executed by ThreadPool
+    template<typename... ARGS>
+    //void Post(ARGS&&... args) { ThreadPool::Post(mFunc, std::forward<ARGS>(args)...); }
+    void Post(ARGS&&... args) { ThreadPool::Post(mFunc, args...); }
+
+private:
+    FUNC mFunc;
+};
+
+//
 // Class ThreadPool implementation
 //
-inline void ThreadPool::Create(int threadCount)
+inline void ThreadPool::Start(int threadCount)
 {
     assert(mThreads.empty());
     mThreads.resize(threadCount);
@@ -92,7 +113,7 @@ inline void ThreadPool::Create(int threadCount)
                     continue; // We shouldn't be here, but just in case
 
                 // Pop the front element
-                auto func = mReqList.front();
+                auto func = std::move(mReqList.front());
                 mReqList.pop_front();
 
                 // Release the lock to let other threads go
@@ -159,7 +180,7 @@ inline void ThreadPool::Wait()
                 JoinThreads();
 
                 // Restart threads
-                Create(mThreadCount);
+                Start(mThreadCount);
                 break;
             }
         }
